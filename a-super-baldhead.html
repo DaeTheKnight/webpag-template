@@ -1,0 +1,157 @@
+#!/bin/bash
+# Use this for your user data (script from top to bottom)
+# install httpd (Linux 2 version)
+yum update -y
+yum install -y httpd
+systemctl start httpd
+systemctl enable httpd
+
+# Get the IMDSv2 token
+TOKEN=$(curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
+
+# Background the curl requests
+curl -H "X-aws-ec2-metadata-token: $TOKEN" -s http://169.254.169.254/latest/meta-data/local-ipv4 &> /tmp/local_ipv4 &
+curl -H "X-aws-ec2-metadata-token: $TOKEN" -s http://169.254.169.254/latest/meta-data/placement/availability-zone &> /tmp/az &
+curl -H "X-aws-ec2-metadata-token: $TOKEN" -s http://169.254.169.254/latest/meta-data/network/interfaces/macs/ &> /tmp/macid &
+wait
+
+macid=$(cat /tmp/macid)
+local_ipv4=$(cat /tmp/local_ipv4)
+az=$(cat /tmp/az)
+vpc=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" -s http://169.254.169.254/latest/meta-data/network/interfaces/macs/${macid}/vpc-id)
+
+# Use single quotes for the echo command
+echo '
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>App-1</title>
+    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Raleway">
+    <style>
+        body,h1 {font-family: "Raleway", sans-serif}
+        body, html {height: 100%}
+        .bgimg {
+          background-image: url("https://storage.googleapis.com/a-dream/br2.jpg");
+          min-height: 100%;
+          background-position: center;
+          background-size: cover;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .w3-display-middle {
+          background-image: url("https://storage.googleapis.com/a-dream/thai-demon.png");
+          background-size: cover;
+          padding: 275px; /* Adjust padding for responsiveness */
+          border-radius: 25px; /* Optional: adds rounded corners */
+          text-align: center;
+          max-width: 100%; /* Prevent container from becoming too large */
+          min-width: 40%;
+          /*min-height: 70vh; ;*/
+          border: 3px solid rgba(255, 255, 255, 0.575);
+        }
+
+        .transparent-background {
+          padding: 20px;
+          border-radius: 5px;
+          display: inline-block;
+          color: white;
+        }
+        .w3-display-middle h1 {
+          font-size: 3em; /* Reduce heading size for flexibility */
+        }
+
+        .w3-display-middle p {
+          font-size: 1.5em; /* Increase the font size of the paragraph */
+        }
+
+        .counter-container {
+          margin-top: 20px;
+          width: 100%; /* Allow button container to take full width */
+        }
+
+        .button-style { 
+          font-size: 3.25em; /* Adjust font size for responsiveness */
+          padding: 10px 20px; 
+          background: rgba(0, 0, 0, 0.562);
+          color: white;
+          border: 2px solid white;
+          border-radius: 10px;
+          cursor: pointer;
+          text-decoration: none; /* Removes underline from the link */
+          max-width: 100%; /* Ensure button doesn’t overflow */
+          box-sizing: border-box; /* Include padding in width calculations */
+        }
+
+        .button-style:hover {
+          background: rgba(255, 255, 255, 0.2);
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 1024px) {
+          .button-style {
+            font-size: 1.8em;
+            padding: 8px 16px;
+          }
+          .w3-display-middle {
+            padding: 20px;
+          }
+        }
+
+        @media (max-width: 768px) {
+          .button-style {
+            font-size: 1.5em;
+            padding: 6px 12px;
+          }
+          .w3-display-middle {
+            padding: 15px;
+          }
+        }
+
+        @media (max-width: 480px) {
+          .button-style {
+            font-size: 1.2em;
+            padding: 4px 10px;
+          }
+          .w3-display-middle {
+            padding: 10px;
+          }
+        }
+
+    </style>
+    <script>
+      function goToLink() {
+          window.location.href = "https://www.lizzomusic.com/";
+      }
+  </script>
+</head>
+<body>
+  <div class="bgimg w3-display-container w3-animate-opacity w3-text-white">
+    <div class="w3-display-topleft w3-padding-large w3-xlarge">
+      <h1 class="w3-jumbo w3-animate-top">DEMON-6969-B</h1>
+    </div>
+<div class="bgimg w3-animate-opacity w3-text-white">
+  <div class="w3-display-middle">    <div class="counter-container">
+    <a href="javascript:void(0);" class="button-style" onclick="goToLink()">Push</a>
+    </div>
+  </div>
+</div>
+<div class="w3-display-bottomleft w3-padding-small transparent-background outlined-text">
+  <h2>Another Beron Creation</h2>
+  <h3>Configuration Information:</h3>
+  <p><b>Instance Name:</b> '"$(hostname -f)"'</p>
+  <p><b>Instance Private IP Address: </b> '"${local_ipv4}"'</p>
+  <p><b>Availability Zone: </b> '"${az}"'</p>
+  <p><b>VPC ID:</b> '"${vpc}"'</p>
+</div>
+</body>
+</html>
+' > /var/www/html/index.html
+
+# Clean up the temp files
+rm -f /tmp/local_ipv4 /tmp/az /tmp/macid
+
